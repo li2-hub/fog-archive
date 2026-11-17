@@ -80,17 +80,22 @@ export default function fogEngineTest() {
     });
 
     it('T4_clue_grant_is_idempotent', 0, () => {
-      const state: GameState = createInitialState(NOW);
+      // 该选项的目标节点 n_b1_tape 要求门禁线索，先补齐前提，
+      // 让本条用例只验证"同一条线索重复领取不会重复记账"这一件事。
+      const state: GameState = stateWith([CLUE_DOOR], []);
       state.currentNodeId = 'n_b1_shelf';
+
       const first: ApplyResult = applyChoiceById(state, 'ch_shelf_search', NOW + 1000);
-      expect(first.state.collectedClues.length).assertEqual(1);
-      expect(first.state.collectedClues[0]).assertEqual(CLUE_CARD);
+      expect(first.ok).assertTrue();
+      expect(first.state.countClue(CLUE_CARD)).assertEqual(1);
+      expect(first.state.collectedClues.length).assertEqual(2);
 
       const again: GameState = first.state.clone();
       again.currentNodeId = 'n_b1_shelf';
       const second: ApplyResult = applyChoiceById(again, 'ch_shelf_search', NOW + 2000);
-      expect(second.state.collectedClues.length).assertEqual(1);
-      expect(second.state.collectedClues[0]).assertEqual(CLUE_CARD);
+      expect(second.ok).assertTrue();
+      expect(second.state.countClue(CLUE_CARD)).assertEqual(1);
+      expect(second.state.collectedClues.length).assertEqual(2);
     });
 
     it('T5_time_exhausted_rejects_choice', 0, () => {

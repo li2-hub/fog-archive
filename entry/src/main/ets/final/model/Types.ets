@@ -117,6 +117,17 @@ export class GameState {
     return this.deductions.includes(id);
   }
 
+  /** 某条线索被记录了几次，用于验证"重复领取不会重复记账" */
+  countClue(id: string): number {
+    let count: number = 0;
+    for (const item of this.collectedClues) {
+      if (item === id) {
+        count = count + 1;
+      }
+    }
+    return count;
+  }
+
   hasFlag(id: string): boolean {
     return this.flags.includes(id);
   }
