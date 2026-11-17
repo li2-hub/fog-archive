@@ -18,6 +18,9 @@
 *.docx
 *.jpeg
 *.jpg
+# 但大作业的截图证据要进仓库
+!docs/final/screenshots/*.jpeg
+!docs/final/screenshots/*.jpg
 实验报告提示词.md
 entry/.preview
 

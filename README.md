@@ -32,7 +32,8 @@ entry/src/main/ets/
 ├─ pages/           原有课程实验页面（Index.ets 等，保持不变）
 ├─ common/          原有实验数据与卡片存储
 ├─ final/           ★ 期末大作业新区域
-│  ├─ pages/        入口 / 场景 / 线索板 / 结局
+│  ├─ BootConfig.ets 启动页开关（切回课程实验入口只需改这里）
+│  ├─ pages/        标题页 FinalIndex / 场景页 FogScene
 │  ├─ view/         HUD、线索卡、选项按钮、阶段进度
 │  ├─ model/        类型定义 + 剧情数据表
 │  ├─ engine/       纯函数引擎（选择、推理、结局判定）
@@ -44,9 +45,21 @@ docs/final/         计划、需求说明书、演示与测试清单
 ## 运行方法
 
 1. DevEco Studio 打开工程根目录（含 `build-profile.json5`），等待 Sync 完成。
-2. 首次运行需在 `File → Project Structure → Signing Configs` 勾选自动签名。
-3. 选择 `entry` 模块 + 手机模拟器/真机，点击运行。
-4. 应用首页为原实验首页，从"迷雾档案"入口进入大作业区域（或在 `main_pages.json` 中把首屏切到 `final/pages/FinalIndex`）。
+2. 选择 `entry` 模块 + 模拟器/真机，点击运行。**打开即是本作品**（标题页）。
+3. 本机 log 版模拟器不校验签名，未签名包也能安装运行；装到真机时才需要在 `File → Project Structure → Signing Configs` 勾选自动签名。
+
+### 启动页开关（做课程实验时看这里）
+
+打开 App 看到哪个页面，只由 `entry/src/main/ets/final/BootConfig.ets` 一个常量决定：
+
+```ts
+export const START_PAGE: string = 'final/pages/FinalIndex'; // 大作业入口
+// 要做实验十一、十二等课程实验时，改成：
+// export const START_PAGE: string = 'pages/Index';         // 课程实验入口
+```
+
+改完直接运行即可。`pages/Index.ets`、`common/`、卡片与媒体资源、`module.json5` 全程未被修改，
+切回后实验页面与改造前完全一致（状态栏也会恢复系统默认外观，不会被本作品的深色主题影响）。
 
 ### 构建与测试
 
@@ -61,25 +74,28 @@ hdc shell aa test -b com.example.campuscardlab -m entry_test -s unittest OpenHar
 
 ## 测试
 
-9 条自动化用例（正常 / 边界 / 异常 / 分支），覆盖初始状态、选择推进、条件门槛、线索幂等、时间耗尽、推理成功与失败、双结局判定、存档往返与损坏降级。详见 `docs/final/演示与测试清单.md`。
+9 条自动化用例（正常 / 边界 / 异常 / 分支），覆盖初始状态、选择推进、条件门槛、线索幂等、时间耗尽、推理成功与失败、双结局判定。已在模拟器上实跑：**9 通过 / 0 失败**（2026-11-17），原始输出见 `docs/final/evidence/`，执行过程与一次真实缺陷复盘见 `docs/final/测试执行记录.md`。
 
 ## 文档
 
 - [开发计划](docs/final/PLAN.md)
 - [软件需求说明书](docs/final/软件需求说明书.md)
 - [演示与测试清单](docs/final/演示与测试清单.md)
+- [测试执行记录](docs/final/测试执行记录.md)
+- [签名与模拟器操作步骤](docs/final/签名与模拟器操作步骤.md)
 
 ## 截图与录屏
 
-- 截图：待补（入口、三场景、线索板、推理成功/失败、双结局、测试报告）
+- 截图：`docs/final/screenshots/`（标题页、案件概要、场景页、线索归档、切回实验入口验证）
 - 录屏：待补（主线通关 / 杀进程恢复 / 分支与异常）
 
 ## 进度
 
 - [x] M0 新区域与文档基线
-- [x] M1 数据模型与引擎编译通过，T1–T8 用例已就绪（待设备执行）
+- [x] M1 数据模型与引擎，9 条用例在模拟器上全部通过
+- [x] 启动入口切换（`BootConfig.ets`）与标题页、场景页跑通
 - [ ] M2 存档 + T9
-- [ ] M3 四个页面可通关
+- [ ] M3 线索板与结局页
 - [ ] M4 动画与视觉打磨
 - [ ] M5 测试与性能
 - [ ] M6 报告 / 录屏 / tag v1.0
