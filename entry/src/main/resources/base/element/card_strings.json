@@ -1,0 +1,12 @@
+{
+  "string": [
+    {
+      "name": "campus_card_name",
+      "value": "校园日程"
+    },
+    {
+      "name": "campus_card_desc",
+      "value": "查看校园活动、时间与集合地点"
+    }
+  ]
+}

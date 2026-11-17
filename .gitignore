@@ -1,0 +1,32 @@
+/node_modules
+/oh_modules
+/local.properties
+/.idea
+**/build
+/.hvigor
+.cxx
+/.clangd
+/.clang-format
+/.clang-tidy
+**/.test
+/.appanalyzer
+
+# 课程实验残留（不进大作业仓库）
+/backup
+/screenshots
+/tools
+*.docx
+*.jpeg
+*.jpg
+实验报告提示词.md
+entry/.preview
+
+# 本地工具与笔记
+.workbuddy/
+
+# 构建与调试产物
+*.hap
+*.app
+*.har
+.hvigor/
+.arkui-x/
