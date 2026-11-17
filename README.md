@@ -84,7 +84,9 @@ hdc shell aa test -b com.example.campuscardlab -m entry_test -s unittest OpenHar
 
 13 条自动化用例（正常 / 边界 / 异常 / 分支 / 回归 / 存档），覆盖初始状态、选择推进、条件门槛、线索幂等、时间耗尽、推理成功与失败、双结局判定、捷径路线不卡关、问保安路线的证据补救、存档往返、存档损坏降级。
 
-其中 **11 条已在模拟器上实跑通过**（2026-11-17，`Tests run: 11, Failure: 0`）；T9/T12 为 M2 新增，已在测试模块编译通过，实跑记录待补。原始输出见 `docs/final/evidence/`，缺陷复盘见 `docs/final/测试执行记录.md`。
+其中 **13 条已在模拟器上全部实跑通过**（2026-11-17，`Tests run: 13, Failure: 0, Error: 0`）。另有端到端验证：推进到监控回放后 `force-stop` 杀进程，重启仍恢复同一节点、同一剩余时间、同三条线索（见 `docs/final/screenshots/11–13`）。
+
+原始输出见 `docs/final/evidence/`，两轮真实缺陷复盘与杀进程验证步骤见 `docs/final/测试执行记录.md`。
 
 ## 文档
 
@@ -96,7 +98,7 @@ hdc shell aa test -b com.example.campuscardlab -m entry_test -s unittest OpenHar
 
 ## 截图与录屏
 
-- 截图：`docs/final/screenshots/`（标题页、案件概要、场景页、线索归档、B1 铁门三条路线、线索板、推论成立、选项解锁、切回实验入口验证）
+- 截图：`docs/final/screenshots/`（标题页、案件概要、场景页、线索归档、B1 铁门三条路线、线索板、推论成立、选项解锁、杀进程前、重启后继续调查、重启后现场恢复、切回实验入口验证）
 - 录屏：待补（主线通关 / 杀进程恢复 / 分支与异常）
 
 ## 进度
@@ -107,7 +109,7 @@ hdc shell aa test -b com.example.campuscardlab -m entry_test -s unittest OpenHar
 - [x] 修复 B1 监控回放的死路，补"问保安"路线的证据补救选项
 - [x] 线索板：两两验证推论、解锁现场灰色选项
 - [x] M2 存档：Preferences 落盘 / 启动恢复 / 损坏降级 / 标题页"继续调查" / 页面内「↻ 重开」
-- [ ] M2 收尾：T9、T12 需在设备上实跑并归档输出
+- [x] M2 验证：T9、T12 实跑通过（13/13），并实机验证杀进程恢复
 - [ ] M3 结局页细化（结局草稿已内嵌在场景页）
 - [ ] M4 动画与视觉打磨
 - [ ] M5 测试与性能
