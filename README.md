@@ -77,7 +77,7 @@ hdc shell aa test -b com.example.campuscardlab -m entry_test -s unittest OpenHar
 ## 进度
 
 - [x] M0 新区域与文档基线
-- [ ] M1 数据模型与引擎 + 8 条单测
+- [x] M1 数据模型与引擎编译通过，T1–T8 用例已就绪（待设备执行）
 - [ ] M2 存档 + T9
 - [ ] M3 四个页面可通关
 - [ ] M4 动画与视觉打磨
