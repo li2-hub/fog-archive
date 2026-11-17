@@ -1,5 +1,7 @@
 {
   "src": [
-    "pages/Index"
+    "pages/Index",
+    "final/pages/FinalIndex",
+    "final/pages/FogScene"
   ]
 }

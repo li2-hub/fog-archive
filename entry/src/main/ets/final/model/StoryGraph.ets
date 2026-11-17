@@ -32,7 +32,7 @@ export const CLUES: ClueDef[] = [
     id: CLUE_LOG,
     name: '闭馆巡查记录',
     summary: '值班签名与登记人不一致',
-    detail: '21:40 的巡查记录上签的是"周"，但当晚登记的值班人是"陈"。保安说周那天请了假。',
+    detail: '21:40 的巡查记录上签的是「周」，但当晚登记的值班人是「陈」。保安说周那天请了假。',
     sceneId: SCENE_LIBRARY
   },
   {
@@ -60,14 +60,14 @@ export const CLUES: ClueDef[] = [
     id: CLUE_BURN,
     name: '烧焦的排班表',
     summary: 'B1 值班被临时换过',
-    detail: '403 废纸篓里的残页还能认出半行字："B1 值班 陈→周（临时）"。剩下的部分烧得很干净。',
+    detail: '403 废纸篓里的残页还能认出半行字：「B1 值班 陈→周（临时）」。剩下的部分烧得很干净。',
     sceneId: SCENE_LAB
   },
   {
     id: CLUE_NOTE,
     name: '37 号柜的纸条',
     summary: '有人要求目击者改口',
-    detail: '纸条上只有两行："你什么都没看见。""你还要在这个学校待三年。"',
+    detail: '纸条上只有两行：「你什么都没看见。」「你还要在这个学校待三年。」',
     sceneId: SCENE_STADIUM
   }
 ];
@@ -102,7 +102,7 @@ export const NODES: StoryNode[] = [
     id: 'n_accept',
     sceneId: SCENE_OFFICE,
     title: '记者站 · 傍晚',
-    text: '打印机卡了三次纸。站长把一份处分通知推到你面前：凌晨四点，图书馆 B1 书库，一名学生被反锁。"校方的结论是违规滞留。"她顿了顿，"门禁是他自己刷开的。你信吗。"',
+    text: '打印机卡了三次纸。站长把一份处分通知推到你面前：凌晨四点，图书馆 B1 书库，一名学生被反锁。「校方的结论是违规滞留。」她顿了顿，「门禁是他自己刷开的。你信吗。」',
     stage: Stage.ACCEPT,
     requireClues: [], requireDeductions: [], requireFlags: [], isEnding: false,
     choices: [
@@ -134,7 +134,7 @@ export const NODES: StoryNode[] = [
     id: 'n_b1_door',
     sceneId: SCENE_LIBRARY,
     title: 'B1 铁门 · 22:20',
-    text: '铁门上贴着"书库重地"。读卡器亮着红灯，像在等一张特定的卡。保安在你身后说：那晚的门，是有人从外面锁的。',
+    text: '铁门上贴着「书库重地」。读卡器亮着红灯，像在等一张特定的卡。保安在你身后说：那晚的门，是有人从外面锁的。',
     stage: Stage.SURVEY,
     requireClues: [], requireDeductions: [], requireFlags: [], isEnding: false,
     choices: [
@@ -214,7 +214,7 @@ export const NODES: StoryNode[] = [
     id: 'n_lab_room',
     sceneId: SCENE_LAB,
     title: '403 值班室 · 23:40',
-    text: '废纸篓里有一小片没烧干净的纸，边缘还是热的。上面能认出半行字："B1 值班 陈→周（临时）"。',
+    text: '废纸篓里有一小片没烧干净的纸，边缘还是热的。上面能认出半行字：「B1 值班 陈→周（临时）」。',
     stage: Stage.VERIFY,
     requireClues: [], requireDeductions: [], requireFlags: [], isEnding: false,
     choices: [
@@ -234,7 +234,7 @@ export const NODES: StoryNode[] = [
     id: 'n_stadium_stand',
     sceneId: SCENE_STADIUM,
     title: '体育场看台 · 次日 12:10',
-    text: '目击者坐在看台最高一排，手里捏着一瓶没开的水。他看见你走近，第一句话是："我昨天说的，你别当真。"',
+    text: '目击者坐在看台最高一排，手里捏着一瓶没开的水。他看见你走近，第一句话是：「我昨天说的，你别当真。」',
     stage: Stage.VERIFY,
     requireClues: [], requireDeductions: [], requireFlags: [], isEnding: false,
     choices: [
@@ -254,7 +254,7 @@ export const NODES: StoryNode[] = [
     id: 'n_stadium_locker',
     sceneId: SCENE_STADIUM,
     title: '看台下 · 储物间',
-    text: '37 号柜的锁是坏的。他站在门口没进来，只说："那柜子不是我的。"',
+    text: '37 号柜的锁是坏的。他站在门口没进来，只说：「那柜子不是我的。」',
     stage: Stage.VERIFY,
     requireClues: [], requireDeductions: [], requireFlags: [], isEnding: false,
     choices: [
@@ -274,7 +274,7 @@ export const NODES: StoryNode[] = [
     id: 'n_confront',
     sceneId: SCENE_OFFICE,
     title: '教务处 · 16:30',
-    text: '桌上摊着那份处分决定，签字栏已经空了三天。主任抬头看你："记者站也要讲证据。"',
+    text: '桌上摊着那份处分决定，签字栏已经空了三天。主任抬头看你：「记者站也要讲证据。」',
     stage: Stage.VERDICT,
     requireClues: [], requireDeductions: [], requireFlags: [], isEnding: false,
     choices: [
@@ -285,7 +285,7 @@ export const NODES: StoryNode[] = [
     id: 'n_final_choose',
     sceneId: SCENE_OFFICE,
     title: '教务处 · 最终判断',
-    text: '你可以把整条证据链摊开，也可以只交一份"人情"。窗外天已经黑透了，走廊里有人在等结果。',
+    text: '你可以把整条证据链摊开，也可以只交一份「人情」。窗外天已经黑透了，走廊里有人在等结果。',
     stage: Stage.VERDICT,
     requireClues: [], requireDeductions: [], requireFlags: [], isEnding: false,
     choices: [
