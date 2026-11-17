@@ -72,9 +72,19 @@ hvigorw --mode module -p module=entry@ohosTest -p product=default assembleHap
 hdc shell aa test -b com.example.campuscardlab -m entry_test -s unittest OpenHarmonyTestRunner -s timeout 60000
 ```
 
+## 存档
+
+- 位置：Preferences，库名 `fog_archive`，键 `save_v1`；写入内容为 `store/SaveCodec.ets` 产出的单行 JSON。
+- 时机：每次推进、每次推理成功、重新开档、退到后台（`onPageHide`）各写一次。操作频率是"一次点击一次写入"，不做节流——节流反而有丢最后一次写入的风险。
+- 恢复：进入场景页时自动读取；标题页检测到进度后按钮变为「继续调查」并显示已记录步数。
+- 降级：JSON 截断、版本不符、节点已从数据表删除、结局存档缺少结局 id —— 一律丢弃并开新档，同时用 toast 说明原因，不把半损坏状态喂给引擎。
+- 分层：`store/SaveCodec.ets` 是纯函数（无 Context），负责编码与逐字段校验；`store/SaveRepository.ets` 只做 Preferences 读写。这样存档逻辑能进单元测试。
+
 ## 测试
 
-11 条自动化用例（正常 / 边界 / 异常 / 分支 / 回归），覆盖初始状态、选择推进、条件门槛、线索幂等、时间耗尽、推理成功与失败、双结局判定、捷径路线不卡关、问保安路线的证据补救。已在模拟器上实跑：**11 通过 / 0 失败**（2026-11-17），原始输出见 `docs/final/evidence/`，执行过程与两次真实缺陷复盘见 `docs/final/测试执行记录.md`。
+13 条自动化用例（正常 / 边界 / 异常 / 分支 / 回归 / 存档），覆盖初始状态、选择推进、条件门槛、线索幂等、时间耗尽、推理成功与失败、双结局判定、捷径路线不卡关、问保安路线的证据补救、存档往返、存档损坏降级。
+
+其中 **11 条已在模拟器上实跑通过**（2026-11-17，`Tests run: 11, Failure: 0`）；T9/T12 为 M2 新增，已在测试模块编译通过，实跑记录待补。原始输出见 `docs/final/evidence/`，缺陷复盘见 `docs/final/测试执行记录.md`。
 
 ## 文档
 
@@ -96,7 +106,8 @@ hdc shell aa test -b com.example.campuscardlab -m entry_test -s unittest OpenHar
 - [x] 启动入口切换（`BootConfig.ets`）与标题页、场景页跑通
 - [x] 修复 B1 监控回放的死路，补"问保安"路线的证据补救选项
 - [x] 线索板：两两验证推论、解锁现场灰色选项
-- [ ] M2 存档 + T9
+- [x] M2 存档：Preferences 落盘 / 启动恢复 / 损坏降级 / 标题页"继续调查" / 页面内「↻ 重开」
+- [ ] M2 收尾：T9、T12 需在设备上实跑并归档输出
 - [ ] M3 结局页细化（结局草稿已内嵌在场景页）
 - [ ] M4 动画与视觉打磨
 - [ ] M5 测试与性能
