@@ -28,5 +28,11 @@ entry/.preview
 *.hap
 *.app
 *.har
+*.p12
+*.cer
+*.p7b
+*.csr
+signature/
+.ohos/
 .hvigor/
 .arkui-x/
