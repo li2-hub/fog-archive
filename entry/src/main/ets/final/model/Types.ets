@@ -89,6 +89,8 @@ export class GameState {
   timeLeft: number = START_MINUTES;
   turn: number = 0;
   endingId: EndingId = EndingId.NONE;
+  /** 最终判断用了哪种交付方式；结局复盘文案依赖它，所以必须进存档 */
+  finalChoice: FinalChoice = FinalChoice.NONE;
   startedAt: number = 0;
   updatedAt: number = 0;
 
@@ -104,6 +106,7 @@ export class GameState {
     next.timeLeft = this.timeLeft;
     next.turn = this.turn;
     next.endingId = this.endingId;
+    next.finalChoice = this.finalChoice;
     next.startedAt = this.startedAt;
     next.updatedAt = this.updatedAt;
     return next;

@@ -1,11 +1,12 @@
 import { describe, it, expect } from '@ohos/hypium';
 import {
-  ApplyResult, ChoiceAvailability, ChoiceDef, DeduceResult, EndingId, EnterResult, FinalChoice, GameState, Stage,
-  StoryNode
+  ApplyResult, ChoiceAvailability, ChoiceDef, DeduceResult, EndingId, EnterResult, FinalChoice, GameState,
+  START_MINUTES, Stage, StoryNode
 } from '../../../main/ets/final/model/Types';
 import { applyChoiceById, canEnter, createInitialState, isChoiceAvailable } from '../../../main/ets/final/engine/GameEngine';
 import { tryDeduce } from '../../../main/ets/final/engine/Deduction';
 import { resolveEnding } from '../../../main/ets/final/engine/EndingResolver';
+import { DecodeResult, decodeState, encodeState } from '../../../main/ets/final/store/SaveCodec';
 import {
   CLUE_BURN, CLUE_CARD, CLUE_DOOR, CLUE_LOG, CLUE_NOTE, CLUE_TAPE, DEDUCE_GAP, DEDUCE_WHO, nodeById
 } from '../../../main/ets/final/model/StoryGraph';
@@ -203,6 +204,78 @@ export default function fogEngineTest() {
       const deduced: DeduceResult = tryDeduce(back.state, CLUE_LOG, CLUE_DOOR, NOW + 4000);
       expect(deduced.ok).assertTrue();
       expect(deduced.deductionId).assertEqual(DEDUCE_GAP);
+    });
+
+    it('T9_save_roundtrip', 0, () => {
+      // 存档往返：所有会影响玩法判断的字段都必须原样回来
+      const original: GameState = createInitialState(NOW);
+      original.currentNodeId = 'n_b1_tape';
+      original.stage = Stage.SURVEY;
+      original.collectedClues = [CLUE_LOG, CLUE_DOOR, CLUE_CARD];
+      original.deductions = [DEDUCE_GAP];
+      original.flags = ['guard_talk'];
+      original.visitedNodes = ['n_accept', 'n_gate', 'n_b1_door'];
+      original.timeLeft = 300;
+      original.turn = 5;
+      original.finalChoice = FinalChoice.SUBMIT;
+      original.startedAt = NOW;
+      original.updatedAt = NOW + 5000;
+
+      const raw: string = encodeState(original);
+      expect(raw.length > 0).assertTrue();
+
+      const decoded: DecodeResult = decodeState(raw);
+      expect(decoded.ok).assertTrue();
+      const back: GameState = decoded.state;
+      expect(back.currentNodeId).assertEqual('n_b1_tape');
+      expect(back.stage).assertEqual(Stage.SURVEY);
+      expect(back.collectedClues.length).assertEqual(3);
+      expect(back.hasClue(CLUE_LOG)).assertTrue();
+      expect(back.hasClue(CLUE_DOOR)).assertTrue();
+      expect(back.hasDeduction(DEDUCE_GAP)).assertTrue();
+      expect(back.hasFlag('guard_talk')).assertTrue();
+      expect(back.visitedNodes.length).assertEqual(3);
+      expect(back.timeLeft).assertEqual(300);
+      expect(back.turn).assertEqual(5);
+      expect(back.finalChoice).assertEqual(FinalChoice.SUBMIT);
+      expect(back.startedAt).assertEqual(NOW);
+      expect(back.updatedAt).assertEqual(NOW + 5000);
+
+      // 恢复后引擎能继续用这份状态推进
+      const next: ApplyResult = applyChoiceById(back, 'ch_tape_skip', NOW + 6000);
+      expect(next.ok).assertTrue();
+      expect(next.state.currentNodeId).assertEqual('n_lab_corridor');
+    });
+
+    it('T12_save_corruption_degrades', 0, () => {
+      // 空存档
+      expect(decodeState('').ok).assertFalse();
+
+      // 截断的 JSON：不能让异常穿透到 UI
+      const broken: DecodeResult = decodeState('{"version":1,');
+      expect(broken.ok).assertFalse();
+      expect(broken.reason.length > 0).assertTrue();
+
+      // 版本不兼容（旧包写的档）
+      expect(decodeState('{"version":0,"currentNodeId":"n_gate"}').ok).assertFalse();
+
+      // 指向已被删除的节点
+      expect(decodeState('{"version":1,"currentNodeId":"n_removed_scene"}').ok).assertFalse();
+
+      // 结局节点缺少 endingId：半截数据也算损坏
+      expect(decodeState('{"version":1,"currentNodeId":"n_epilogue","endingId":"none"}').ok).assertFalse();
+
+      // 局部脏数据不整档丢弃：未知线索过滤、重复去重、越界数值夹紧
+      const partial: DecodeResult = decodeState(
+        '{"version":1,"currentNodeId":"n_gate","collectedClues":["c_log","c_ghost","c_log"],"timeLeft":9999,"turn":-3}'
+      );
+      expect(partial.ok).assertTrue();
+      expect(partial.state.collectedClues.length).assertEqual(1);
+      expect(partial.state.hasClue(CLUE_LOG)).assertTrue();
+      expect(partial.state.timeLeft).assertEqual(START_MINUTES);
+      expect(partial.state.turn).assertEqual(0);
+      // 阶段以节点定义为准，不信任存档里可能错位的值
+      expect(partial.state.stage).assertEqual(Stage.SURVEY);
     });
 
   });

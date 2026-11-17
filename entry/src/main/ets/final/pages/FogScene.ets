@@ -1,4 +1,5 @@
 import { promptAction, router } from '@kit.ArkUI';
+import { common } from '@kit.AbilityKit';
 import {
   ApplyResult, ChoiceAvailability, ChoiceDef, ClueDef, DeduceResult, EndingDetail, EndingId, GameState, SceneDef,
   StoryNode
@@ -7,6 +8,7 @@ import { applyChoiceById, createInitialState, isChoiceAvailable, progressPercent
 import { CLUES, clueName, deductionName, nodeById, sceneById } from '../model/StoryGraph';
 import { endingDetail } from '../engine/EndingResolver';
 import { tryDeduce } from '../engine/Deduction';
+import { LoadOutcome, loadState, saveState } from '../store/SaveRepository';
 
 const C_BG: string = '#0B0C0F';
 const C_CARD: string = '#14161A';
@@ -28,9 +30,32 @@ struct FogScene {
   @State private boardOpen: boolean = false;
   @State private pickA: string = '';
   @State private pickB: string = '';
+  /** 存档读取是异步的，读完前不要渲染场景，否则会闪一下"记者站·傍晚"的假初始节点 */
+  @State private ready: boolean = false;
 
   aboutToAppear(): void {
+    this.restoreOrStart().catch((error: Error) => {
+      console.error(`[FOG] RESTORE_FAILED ${error.message}`);
+      this.restart();
+      this.ready = true;
+    });
+  }
+
+  /** 优先恢复存档；没有或不可信时开新档，并把降级原因告诉玩家 */
+  private async restoreOrStart(): Promise<void> {
+    const context: common.Context = getContext(this) as common.Context;
+    const outcome: LoadOutcome = await loadState(context);
+    if (outcome.ok) {
+      this.state = outcome.state;
+      this.applyEndingView(outcome.state);
+      this.ready = true;
+      return;
+    }
     this.restart();
+    this.ready = true;
+    if (outcome.reason !== '' && outcome.reason !== '没有可恢复的存档') {
+      promptAction.showToast({ message: outcome.reason, duration: 2600 });
+    }
   }
 
   private restart(): void {
@@ -42,6 +67,60 @@ struct FogScene {
     this.boardOpen = false;
     this.pickA = '';
     this.pickB = '';
+    this.persist();
+  }
+
+  /**
+   * 每次状态变更后立即落盘。这里的操作频率是"一次点击一次写入"，
+   * 不需要节流；节流反而有丢掉最后一次写入的风险。
+   */
+  private persist(): void {
+    const context: common.Context = getContext(this) as common.Context;
+    saveState(context, this.state)
+      .then((ok: boolean) => {
+        if (!ok) {
+          console.warn('[FOG] 存档写入失败，本次进度可能不会被恢复');
+        }
+      })
+      .catch((error: Error) => {
+        console.error(`[FOG] PERSIST_FAILED ${error.message}`);
+      });
+  }
+
+  private applyEndingView(state: GameState): void {
+    if (state.endingId === EndingId.NONE) {
+      return;
+    }
+    const detail: EndingDetail = endingDetail(state.endingId, state, state.finalChoice);
+    this.endingTitle = detail.title;
+    this.endingSummary = detail.summary;
+    this.endingMissing = detail.missing;
+    this.reachedEnding = true;
+  }
+
+  private confirmRestart(): void {
+    AlertDialog.show({
+      title: '重新调查',
+      message: '当前进度会被清空，从案件开头重新开始。这条存档不会保留。',
+      autoCancel: true,
+      primaryButton: {
+        value: '取消',
+        action: () => {
+        }
+      },
+      secondaryButton: {
+        value: '重新开始',
+        fontColor: C_WARN,
+        action: () => {
+          this.restart();
+        }
+      }
+    });
+  }
+
+  /** 退到后台或被系统回收前再写一次，兜住最后一次可能没落盘的状态 */
+  onPageHide(): void {
+    this.persist();
   }
 
   /** build 里不处理 undefined，统一在这里兜底 */
@@ -88,13 +167,8 @@ struct FogScene {
       return;
     }
     this.state = result.state;
-    if (result.state.endingId !== EndingId.NONE) {
-      const detail: EndingDetail = endingDetail(result.state.endingId, result.state, choice.finalChoice);
-      this.endingTitle = detail.title;
-      this.endingSummary = detail.summary;
-      this.endingMissing = detail.missing;
-      this.reachedEnding = true;
-    }
+    this.applyEndingView(result.state);
+    this.persist();
   }
 
   private toggleClue(id: string): void {
@@ -134,6 +208,7 @@ struct FogScene {
     this.state = result.state;
     this.pickA = '';
     this.pickB = '';
+    this.persist();
     promptAction.showToast({ message: `推论成立：${deductionName(result.deductionId)}`, duration: 2400 });
   }
 
@@ -148,6 +223,13 @@ struct FogScene {
           .fontColor(C_MUTED)
           .onClick(() => {
             router.back();
+          })
+        Text('↻ 重开')
+          .fontSize(12)
+          .fontColor(C_MUTED)
+          .margin({ left: 16 })
+          .onClick(() => {
+            this.confirmRestart();
           })
         Blank()
         Row({ space: 4 }) {
@@ -601,7 +683,20 @@ struct FogScene {
 
   build() {
     Column() {
-      if (this.boardOpen) {
+      if (!this.ready) {
+        Column({ space: 12 }) {
+          Text('正在读取档案')
+            .fontSize(13)
+            .fontColor(C_MUTED)
+            .letterSpacing(3)
+          Text('· · ·')
+            .fontSize(13)
+            .fontColor(C_LINE)
+        }
+        .width('100%')
+        .height('100%')
+        .justifyContent(FlexAlign.Center)
+      } else if (this.boardOpen) {
         this.boardTopBar()
         this.boardBody()
         if (this.pickA !== '' && this.pickB !== '') {

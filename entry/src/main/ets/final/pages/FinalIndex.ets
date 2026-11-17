@@ -1,6 +1,8 @@
 import { router } from '@kit.ArkUI';
+import { common } from '@kit.AbilityKit';
 import { CLUES, DEDUCTIONS, NODES, SCENES } from '../model/StoryGraph';
 import { START_MINUTES } from '../model/Types';
+import { LoadOutcome, loadState } from '../store/SaveRepository';
 
 /** 深色档案 + 琥珀强调 */
 const C_BG: string = '#0B0C0F';
@@ -16,6 +18,8 @@ struct FinalIndex {
   @State private shown: boolean = false;
   @State private glow: number = 0.25;
   @State private showCaseFile: boolean = false;
+  /** 有存档时把按钮改成"继续调查"，并提示已记录到第几步 */
+  @State private resumeTurn: number = 0;
 
   aboutToAppear(): void {
     animateTo({ duration: 650, curve: Curve.EaseOut }, () => {
@@ -24,6 +28,21 @@ struct FinalIndex {
     animateTo({ duration: 1600, curve: Curve.EaseInOut, iterations: -1, playMode: PlayMode.Alternate }, () => {
       this.glow = 0.85;
     });
+    this.checkSave();
+  }
+
+  /** 只读一次存档用于改文案，真正的恢复在场景页做，避免两处各写一份逻辑 */
+  private async checkSave(): Promise<void> {
+    try {
+      const context: common.Context = getContext(this) as common.Context;
+      const outcome: LoadOutcome = await loadState(context);
+      if (outcome.ok && outcome.state.turn > 0) {
+        this.resumeTurn = outcome.state.turn;
+      }
+    } catch (error) {
+      const err = error as Error;
+      console.error(`[FOG] CHECK_SAVE_FAILED ${err.message}`);
+    }
   }
 
   @Builder
@@ -109,7 +128,7 @@ struct FinalIndex {
       }
 
       Column({ space: 12 }) {
-        Button('开 始 调 查')
+        Button(this.resumeTurn > 0 ? '继 续 调 查' : '开 始 调 查')
           .width('100%')
           .height(50)
           .fontSize(16)
@@ -120,6 +139,12 @@ struct FinalIndex {
           .onClick(() => {
             router.pushUrl({ url: 'final/pages/FogScene' });
           })
+
+        if (this.resumeTurn > 0) {
+          Text(`上次记录停在第 ${this.resumeTurn} 步，进度已保存`)
+            .fontSize(11)
+            .fontColor(C_MUTED)
+        }
 
         Text(this.showCaseFile ? '收起案件概要' : '先看案件概要')
           .fontSize(13)

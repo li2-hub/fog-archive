@@ -121,6 +121,7 @@ export function applyChoice(state: GameState, node: StoryNode, choice: ChoiceDef
   next.updatedAt = now;
 
   if (choice.finalChoice !== FinalChoice.NONE) {
+    next.finalChoice = choice.finalChoice;
     next.endingId = resolveEnding(next, choice.finalChoice);
   } else if (target.isEnding) {
     next.endingId = resolveEnding(next, FinalChoice.NONE);
