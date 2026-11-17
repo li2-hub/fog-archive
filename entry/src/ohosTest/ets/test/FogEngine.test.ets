@@ -64,38 +64,46 @@ export default function fogEngineTest() {
       expect(second.state.visitedNodes.includes('n_b1_door')).assertTrue();
     });
 
-    it('T3_entrance_blocked_without_clue', 0, () => {
-      const initial: GameState = createInitialState(NOW);
-      const enter: EnterResult = canEnter(mustNode('n_b1_tape'), initial);
+    it('T3_guard_blocks_without_prerequisite', 0, () => {
+      // 节点级守卫仍然生效：调查结束后任何节点都不再可进入
+      const finished: GameState = createInitialState(NOW);
+      finished.endingId = EndingId.TRUTH;
+      const enter: EnterResult = canEnter(mustNode('n_b1_tape'), finished);
       expect(enter.ok).assertFalse();
-      expect(enter.reason.length > 0).assertTrue();
 
-      const doorState: GameState = initial.clone();
+      // 选项级守卫：缺值班记录时，调门禁后台被拒
+      const doorState: GameState = createInitialState(NOW);
       doorState.currentNodeId = 'n_b1_door';
       const rejected: ApplyResult = applyChoiceById(doorState, 'ch_door_force', NOW + 1000);
       expect(rejected.ok).assertFalse();
       expect(rejected.reason.length > 0).assertTrue();
       expect(rejected.state.currentNodeId).assertEqual('n_b1_door');
       expect(rejected.state.hasClue(CLUE_DOOR)).assertFalse();
+
+      // 选项级守卫：有门禁记录但没有推论时，完整回放仍被拒
+      const tapeState: GameState = stateWith([CLUE_DOOR], []);
+      tapeState.currentNodeId = 'n_b1_tape';
+      const tapeRejected: ApplyResult = applyChoiceById(tapeState, 'ch_tape_full', NOW + 2000);
+      expect(tapeRejected.ok).assertFalse();
+      expect(tapeRejected.state.hasClue(CLUE_TAPE)).assertFalse();
     });
 
     it('T4_clue_grant_is_idempotent', 0, () => {
-      // 该选项的目标节点 n_b1_tape 要求门禁线索，先补齐前提，
-      // 让本条用例只验证"同一条线索重复领取不会重复记账"这一件事。
-      const state: GameState = stateWith([CLUE_DOOR], []);
+      // 目标节点 n_b1_tape 不再要求门禁线索，这里只验证"同一条线索重复领取不会重复记账"
+      const state: GameState = createInitialState(NOW);
       state.currentNodeId = 'n_b1_shelf';
 
       const first: ApplyResult = applyChoiceById(state, 'ch_shelf_search', NOW + 1000);
       expect(first.ok).assertTrue();
       expect(first.state.countClue(CLUE_CARD)).assertEqual(1);
-      expect(first.state.collectedClues.length).assertEqual(2);
+      expect(first.state.collectedClues.length).assertEqual(1);
 
       const again: GameState = first.state.clone();
       again.currentNodeId = 'n_b1_shelf';
       const second: ApplyResult = applyChoiceById(again, 'ch_shelf_search', NOW + 2000);
       expect(second.ok).assertTrue();
       expect(second.state.countClue(CLUE_CARD)).assertEqual(1);
-      expect(second.state.collectedClues.length).assertEqual(2);
+      expect(second.state.collectedClues.length).assertEqual(1);
     });
 
     it('T5_time_exhausted_rejects_choice', 0, () => {
@@ -154,6 +162,47 @@ export default function fogEngineTest() {
         [DEDUCE_GAP, DEDUCE_WHO]
       );
       expect(resolveEnding(fewClues, FinalChoice.SUBMIT)).assertEqual(EndingId.SCAPEGOAT);
+    });
+
+    it('T10_shortcut_route_can_finish', 0, () => {
+      // 回归用例：先选「直接问值班保安」再选「按保安口述记下时间」，
+      // 曾经因为 n_b1_tape 的节点门槛而永久卡死。这条用例逐步断言每一步都推进成功。
+      const steps: string[] = [
+        'ch_accept', 'ch_gate_guard', 'ch_door_guess', 'ch_shelf_search', 'ch_tape_skip',
+        'ch_teacher_ask', 'ch_burn_photo', 'ch_witness_calm', 'ch_locker_open',
+        'ch_confront_enter', 'ch_final_quiet'
+      ];
+      let state: GameState = createInitialState(NOW);
+      for (const id of steps) {
+        const step: ApplyResult = applyChoiceById(state, id, NOW + 1000);
+        expect(step.ok).assertTrue();
+        state = step.state;
+      }
+      expect(state.endingId).assertEqual(EndingId.SCAPEGOAT);
+      expect(state.visitedNodes.includes('n_epilogue')).assertTrue();
+
+      // 能走完，但门禁记录与完整录像这两条证据确实拿不到
+      expect(state.hasClue(CLUE_DOOR)).assertFalse();
+      expect(state.hasClue(CLUE_TAPE)).assertFalse();
+    });
+
+    it('T11_guard_route_can_recover_door_clue', 0, () => {
+      // 问保安之后回头补记录：总耗时与"直接调记录"路线持平，但证据能补齐
+      const first: ApplyResult = applyChoiceById(createInitialState(NOW), 'ch_accept', NOW + 1000);
+      const talk: ApplyResult = applyChoiceById(first.state, 'ch_gate_guard', NOW + 2000);
+      expect(talk.ok).assertTrue();
+      expect(talk.state.hasFlag('guard_talk')).assertTrue();
+      expect(talk.state.hasClue(CLUE_LOG)).assertFalse();
+
+      const back: ApplyResult = applyChoiceById(talk.state, 'ch_door_back', NOW + 3000);
+      expect(back.ok).assertTrue();
+      expect(back.state.hasClue(CLUE_LOG)).assertTrue();
+      expect(back.state.hasClue(CLUE_DOOR)).assertTrue();
+      expect(back.state.timeLeft).assertEqual(420);
+
+      const deduced: DeduceResult = tryDeduce(back.state, CLUE_LOG, CLUE_DOOR, NOW + 4000);
+      expect(deduced.ok).assertTrue();
+      expect(deduced.deductionId).assertEqual(DEDUCE_GAP);
     });
 
   });

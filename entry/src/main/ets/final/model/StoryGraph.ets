@@ -144,7 +144,14 @@ export const NODES: StoryNode[] = [
         grantClues: [CLUE_DOOR], setFlags: [], finalChoice: FinalChoice.NONE
       },
       {
-        id: 'ch_door_guess', label: '按保安口述记下时间', hint: '没有记录，只能凭记忆', nextNodeId: 'n_b1_shelf', cost: 15,
+        // 补救通道：只有先选了「直接问值班保安」（flag guard_talk）才会出现。
+        // 让"省时间"的路线可以花同样的总时间补回证据，避免变成死路。
+        id: 'ch_door_back', label: '让保安陪你回门厅翻那沓记录', hint: '补回纸质记录，但要走一趟', nextNodeId: 'n_b1_shelf', cost: 40,
+        requireClues: [], requireDeductions: [], requireFlags: ['guard_talk'],
+        grantClues: [CLUE_LOG, CLUE_DOOR], setFlags: [], finalChoice: FinalChoice.NONE
+      },
+      {
+        id: 'ch_door_guess', label: '按保安口述记下时间', hint: '省下时间，但门禁记录这条证据链会断', nextNodeId: 'n_b1_shelf', cost: 15,
         requireClues: [], requireDeductions: [], requireFlags: [],
         grantClues: [], setFlags: ['door_guess'], finalChoice: FinalChoice.NONE
       }
@@ -176,11 +183,13 @@ export const NODES: StoryNode[] = [
     title: 'B1 监控回放 · 23:10',
     text: '回放列表里有一段时间是没有缩略图的。你把进度条拖过去，画面直接跳了一格——不是黑屏，是文件被剪掉了。',
     stage: Stage.SURVEY,
-    requireClues: [CLUE_DOOR], requireDeductions: [], requireFlags: [], isEnding: false,
+    // 这里原本要求持有「B1 的门禁记录」，导致走"问保安"路线的玩家被彻底锁死。
+    // 监控室本身不设门槛，把证据要求下放到选项上：没有门禁记录仍能进来，只是取不走完整画面。
+    requireClues: [], requireDeductions: [], requireFlags: [], isEnding: false,
     choices: [
       {
-        id: 'ch_tape_full', label: '把缺口前后对齐看一遍', hint: '需要先想明白门禁时间的矛盾', nextNodeId: 'n_lab_corridor', cost: 25,
-        requireClues: [], requireDeductions: [DEDUCE_GAP], requireFlags: [],
+        id: 'ch_tape_full', label: '把缺口前后对齐看一遍', hint: '需要门禁记录，并想明白时间的矛盾', nextNodeId: 'n_lab_corridor', cost: 25,
+        requireClues: [CLUE_DOOR], requireDeductions: [DEDUCE_GAP], requireFlags: [],
         grantClues: [CLUE_TAPE], setFlags: [], finalChoice: FinalChoice.NONE
       },
       {
@@ -239,14 +248,16 @@ export const NODES: StoryNode[] = [
     requireClues: [], requireDeductions: [], requireFlags: [], isEnding: false,
     choices: [
       {
-        id: 'ch_witness_press', label: '追问为什么改口', hint: '逼他把话说完', nextNodeId: 'n_stadium_locker', cost: 20,
+        id: 'ch_witness_press', label: '追问为什么改口', hint: '快，但会让他更警惕', nextNodeId: 'n_stadium_locker', cost: 15,
         requireClues: [], requireDeductions: [], requireFlags: [],
         grantClues: [], setFlags: ['witness_flip'], finalChoice: FinalChoice.NONE
       },
       {
-        id: 'ch_witness_calm', label: '先陪他坐一会儿', hint: '慢，但他会自己开口', nextNodeId: 'n_stadium_locker', cost: 15,
+        // 原版这里只给了 witness_calm，但开柜子要的是 witness_flip，
+        // 等于"耐心"路线永远打不开 37 号柜、永远拿不到纸条，只能在结局时才发现少东西。
+        id: 'ch_witness_calm', label: '先陪他坐一会儿', hint: '慢，但他会自己开口', nextNodeId: 'n_stadium_locker', cost: 22,
         requireClues: [], requireDeductions: [], requireFlags: [],
-        grantClues: [], setFlags: ['witness_calm'], finalChoice: FinalChoice.NONE
+        grantClues: [], setFlags: ['witness_flip', 'witness_calm'], finalChoice: FinalChoice.NONE
       }
     ]
   },
