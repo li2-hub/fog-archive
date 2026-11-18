@@ -32,12 +32,22 @@ struct FogScene {
   @State private pickB: string = '';
   /** 存档读取是异步的，读完前不要渲染场景，否则会闪一下"记者站·傍晚"的假初始节点 */
   @State private ready: boolean = false;
+  /** 线索入袋的浮层提示：新线索出现时短暂亮一下，让"选择真的改变了状态"看得见 */
+  @State private flashText: string = '';
+  @State private flashOn: boolean = false;
+  /** 推理成功后的结论卡；推理失败时整块面板横向抖一下 */
+  @State private conclusion: string = '';
+  @State private shakeX: number = 0;
+  @State private appear: number = 0;
 
   aboutToAppear(): void {
     this.restoreOrStart().catch((error: Error) => {
       console.error(`[FOG] RESTORE_FAILED ${error.message}`);
       this.restart();
       this.ready = true;
+    });
+    animateTo({ duration: 320, curve: Curve.EaseOut }, () => {
+      this.appear = 1;
     });
   }
 
@@ -67,6 +77,10 @@ struct FogScene {
     this.boardOpen = false;
     this.pickA = '';
     this.pickB = '';
+    this.flashOn = false;
+    this.flashText = '';
+    this.conclusion = '';
+    this.shakeX = 0;
     this.persist();
   }
 
@@ -161,14 +175,68 @@ struct FogScene {
   }
 
   private apply(choice: ChoiceDef): void {
+    const before: string[] = this.state.collectedClues.slice();
     const result: ApplyResult = applyChoiceById(this.state, choice.id, Date.now());
     if (!result.ok) {
       promptAction.showToast({ message: result.reason, duration: 1800 });
       return;
     }
-    this.state = result.state;
+    const fresh: string[] = result.state.collectedClues.filter((id: string) => !before.includes(id));
+    // 包在 animateTo 里，HUD 的进度条与线索计数会平滑过渡，而不是一步跳到位
+    animateTo({ duration: 280, curve: Curve.EaseOut }, () => {
+      this.state = result.state;
+    });
     this.applyEndingView(result.state);
     this.persist();
+    if (fresh.length > 0) {
+      this.showFlash(fresh);
+    }
+  }
+
+  /** 线索入袋的浮层：淡入 → 停 2 秒 → 淡出，纯提示，不拦截任何点击 */
+  private showFlash(ids: string[]): void {
+    let names: string = '';
+    for (const id of ids) {
+      names = names === '' ? `「${clueName(id)}」` : `${names}、「${clueName(id)}」`;
+    }
+    this.flashText = `已归档 ${names}`;
+    animateTo({ duration: 200, curve: Curve.EaseOut }, () => {
+      this.flashOn = true;
+    });
+    setTimeout(() => {
+      animateTo({ duration: 320, curve: Curve.EaseInOut }, () => {
+        this.flashOn = false;
+      });
+    }, 2000);
+  }
+
+  /** 推理不成立时让面板横向抖一下，比只弹一个 toast 更容易被注意到 */
+  private shake(): void {
+    animateTo({ duration: 60, curve: Curve.Linear }, () => {
+      this.shakeX = -6;
+    });
+    setTimeout(() => {
+      animateTo({ duration: 60, curve: Curve.Linear }, () => {
+        this.shakeX = 6;
+      });
+      setTimeout(() => {
+        animateTo({ duration: 90, curve: Curve.Linear }, () => {
+          this.shakeX = 0;
+        });
+      }, 70);
+    }, 70);
+  }
+
+  /** 结局页的状态源是存档，跳转前确保这一笔已经落盘 */
+  private openReview(): void {
+    const context: common.Context = getContext(this) as common.Context;
+    saveState(context, this.state)
+      .catch((error: Error) => {
+        console.error(`[FOG] PERSIST_BEFORE_REVIEW_FAILED ${error.message}`);
+      })
+      .finally(() => {
+        router.pushUrl({ url: 'final/pages/EndingPage' });
+      });
   }
 
   private toggleClue(id: string): void {
@@ -202,10 +270,15 @@ struct FogScene {
     }
     const result: DeduceResult = tryDeduce(this.state, this.pickA, this.pickB, Date.now());
     if (!result.ok) {
+      this.shake();
       promptAction.showToast({ message: result.reason, duration: 2000 });
       return;
     }
-    this.state = result.state;
+    animateTo({ duration: 260, curve: Curve.EaseOut }, () => {
+      this.state = result.state;
+      // 结论直接留在板上，玩家回到现场后还能翻回来看
+      this.conclusion = result.conclusion;
+    });
     this.pickA = '';
     this.pickB = '';
     this.persist();
@@ -319,46 +392,32 @@ struct FogScene {
         .fontSize(14)
         .fontColor('#B9BDC4')
         .lineHeight(24)
+        .maxLines(3)
+        .textOverflow({ overflow: TextOverflow.Ellipsis })
 
       if (this.endingMissing.length > 0) {
-        Column({ space: 6 }) {
-          Text('证据链未闭合的部分')
-            .fontSize(11)
-            .fontColor(C_WARN)
-          ForEach(this.endingMissing, (item: string) => {
-            Text(`· ${item}`).fontSize(12).fontColor(C_MUTED).width('100%')
-          })
-        }
-        .width('100%')
-        .padding(12)
-        .backgroundColor('#1A1512')
-        .borderRadius(4)
-        .alignItems(HorizontalAlign.Start)
+        Text(`还有 ${this.endingMissing.length} 项条件没有闭合，完整复盘里能看到差在哪`)
+          .fontSize(11)
+          .fontColor(C_WARN)
+          .width('100%')
       }
 
-      Row({ space: 10 }) {
-        Button('重新调查')
-          .layoutWeight(1)
-          .height(44)
-          .fontSize(14)
-          .fontColor('#141414')
-          .backgroundColor(C_ACCENT)
-          .borderRadius(4)
-          .onClick(() => {
-            this.restart();
-          })
-        Button('回到标题')
-          .layoutWeight(1)
-          .height(44)
-          .fontSize(14)
-          .fontColor(C_MUTED)
-          .backgroundColor(C_CARD)
-          .borderRadius(4)
-          .onClick(() => {
-            router.back();
-          })
-      }
-      .width('100%')
+      Button('查看完整复盘 ›')
+        .width('100%')
+        .height(44)
+        .fontSize(14)
+        .fontColor('#141414')
+        .backgroundColor(C_ACCENT)
+        .borderRadius(4)
+        .onClick(() => {
+          this.openReview();
+        })
+      Text('重新调查')
+        .fontSize(13)
+        .fontColor(C_MUTED)
+        .onClick(() => {
+          this.restart();
+        })
     }
     .width('100%')
     .padding(16)
@@ -366,6 +425,29 @@ struct FogScene {
     .borderRadius(6)
     .border({ width: 1, color: C_LINE })
     .alignItems(HorizontalAlign.Start)
+  }
+
+  /** 新线索入袋时的浮层；用绝对定位钉在顶部条下方，不参与正文排版 */
+  @Builder
+  clueFlash() {
+    Row({ space: 8 }) {
+      Text('✓')
+        .fontSize(12)
+        .fontColor(C_ACCENT)
+      Text(this.flashText)
+        .fontSize(12)
+        .fontColor(C_TEXT)
+        .layoutWeight(1)
+    }
+    .width('100%')
+    .padding({ left: 12, right: 12, top: 8, bottom: 8 })
+    .backgroundColor('#1B1710')
+    .borderRadius(4)
+    .border({ width: 1, color: C_ACCENT })
+    .opacity(this.flashOn ? 1 : 0)
+    .translate({ y: this.flashOn ? 0 : -8 })
+    // 没有提示时保留占位（避免正文上下跳动），但整块隐藏，不要让 ✓ 单独留在页面上
+    .visibility(this.flashText === '' ? Visibility.Hidden : Visibility.Visible)
   }
 
   @Builder
@@ -575,6 +657,39 @@ struct FogScene {
           .lineHeight(21)
           .width('100%')
 
+        if (this.conclusion !== '') {
+          Column({ space: 6 }) {
+            Row() {
+              Text('推论成立')
+                .fontSize(11)
+                .fontColor(C_ACCENT)
+                .letterSpacing(2)
+              Blank()
+              Text('收起')
+                .fontSize(11)
+                .fontColor(C_MUTED)
+                .onClick(() => {
+                  animateTo({ duration: 200, curve: Curve.EaseInOut }, () => {
+                    this.conclusion = '';
+                  });
+                })
+            }
+            .width('100%')
+            Text(this.conclusion)
+              .fontSize(13)
+              .fontColor('#C3C7CD')
+              .lineHeight(22)
+              .width('100%')
+          }
+          .width('100%')
+          .padding(14)
+          .backgroundColor('#1B1710')
+          .borderRadius(6)
+          .border({ width: 1, color: C_ACCENT })
+          .alignItems(HorizontalAlign.Start)
+          .transition(TransitionEffect.OPACITY.combine(TransitionEffect.translate({ y: -8 })))
+        }
+
         Divider().color(C_LINE)
 
         Text('已归档')
@@ -634,6 +749,8 @@ struct FogScene {
     .layoutWeight(1)
     .align(Alignment.Top)
     .scrollBar(BarState.Off)
+    // 推理不成立时的抖动作用在整块面板上，正文不重排
+    .translate({ x: this.shakeX })
   }
 
   @Builder
@@ -704,6 +821,7 @@ struct FogScene {
         }
       } else {
         this.topBar()
+        this.clueFlash()
         this.sceneBody()
       }
     }
@@ -711,5 +829,7 @@ struct FogScene {
     .height('100%')
     .padding({ left: 20, right: 20 })
     .backgroundColor(C_BG)
+    .opacity(this.appear)
+    .translate({ y: this.appear === 1 ? 0 : 12 })
   }
 }
