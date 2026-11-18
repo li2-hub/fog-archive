@@ -2,6 +2,7 @@
   "src": [
     "pages/Index",
     "final/pages/FinalIndex",
-    "final/pages/FogScene"
+    "final/pages/FogScene",
+    "final/pages/EndingPage"
   ]
 }

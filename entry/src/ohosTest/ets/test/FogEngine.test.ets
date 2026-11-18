@@ -6,6 +6,7 @@ import {
 import { applyChoiceById, canEnter, createInitialState, isChoiceAvailable } from '../../../main/ets/final/engine/GameEngine';
 import { tryDeduce } from '../../../main/ets/final/engine/Deduction';
 import { resolveEnding } from '../../../main/ets/final/engine/EndingResolver';
+import { reviewStats, ReviewStats } from '../../../main/ets/final/engine/Review';
 import { DecodeResult, decodeState, encodeState } from '../../../main/ets/final/store/SaveCodec';
 import {
   CLUE_BURN, CLUE_CARD, CLUE_DOOR, CLUE_LOG, CLUE_NOTE, CLUE_TAPE, DEDUCE_GAP, DEDUCE_WHO, nodeById
@@ -204,6 +205,56 @@ export default function fogEngineTest() {
       const deduced: DeduceResult = tryDeduce(back.state, CLUE_LOG, CLUE_DOOR, NOW + 4000);
       expect(deduced.ok).assertTrue();
       expect(deduced.deductionId).assertEqual(DEDUCE_GAP);
+    });
+
+    it('T13_review_stats_for_truth', 0, () => {
+      // 结局页的统计必须以存档为准：条件清单全绿、百分比取整、用时按起始时限反推
+      const full: GameState = stateWith(
+        [CLUE_LOG, CLUE_DOOR, CLUE_CARD, CLUE_TAPE, CLUE_BURN, CLUE_NOTE],
+        [DEDUCE_GAP, DEDUCE_WHO]
+      );
+      full.timeLeft = 100;
+      full.turn = 12;
+      full.visitedNodes = ['n_accept', 'n_gate', 'n_b1_door', 'n_b1_shelf', 'n_b1_tape', 'n_lab_corridor',
+        'n_lab_room', 'n_stadium_stand', 'n_stadium_locker', 'n_confront', 'n_final_choose', 'n_epilogue'];
+
+      const stats: ReviewStats = reviewStats(full, FinalChoice.SUBMIT);
+      expect(stats.clueCount).assertEqual(6);
+      expect(stats.cluePercent).assertEqual(100);
+      expect(stats.deductionCount).assertEqual(2);
+      expect(stats.deductionPercent).assertEqual(100);
+      expect(stats.timeUsed).assertEqual(START_MINUTES - 100);
+      expect(stats.sceneCount).assertEqual(4);
+      expect(stats.missCount).assertEqual(0);
+      expect(stats.items.length).assertEqual(4);
+      for (const item of stats.items) {
+        expect(item.ok).assertTrue();
+      }
+    });
+
+    it('T14_review_stats_lists_missing_conditions', 0, () => {
+      // 走"只交人情"的 B 结局：四条条件都该标成未达成，且逐项能说清原因
+      const thin: GameState = stateWith([CLUE_LOG, CLUE_CARD], []);
+      thin.turn = 4;
+      thin.timeLeft = 300;
+
+      const stats: ReviewStats = reviewStats(thin, FinalChoice.KEEP_QUIET);
+      expect(stats.missCount).assertEqual(4);
+      expect(stats.cluePercent).assertEqual(33);
+      expect(stats.deductionPercent).assertEqual(0);
+      for (const item of stats.items) {
+        expect(item.ok).assertFalse();
+        expect(item.note.length > 0).assertTrue();
+      }
+
+      // 只缺线索数时，前三条应当通过
+      const almost: GameState = stateWith([CLUE_LOG, CLUE_DOOR, CLUE_CARD], [DEDUCE_GAP, DEDUCE_WHO]);
+      const partial: ReviewStats = reviewStats(almost, FinalChoice.SUBMIT);
+      expect(partial.missCount).assertEqual(1);
+      expect(partial.items[0].ok).assertTrue();
+      expect(partial.items[1].ok).assertTrue();
+      expect(partial.items[2].ok).assertTrue();
+      expect(partial.items[3].ok).assertFalse();
     });
 
     it('T9_save_roundtrip', 0, () => {
